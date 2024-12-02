@@ -1,6 +1,6 @@
 use aoc24::input;
 pub fn main() {
-    let data = input(2).by_line().map(|l| numbers(&l)).collect::<Vec<_>>();
+    let data = input(2).map_by_line(|l| numbers(&l)).collect::<Vec<_>>();
     let simple = data.iter().filter(|ln| safe(ln.iter())).count();
     println!("Part 1: {simple}");
     let damp = data

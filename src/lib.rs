@@ -15,6 +15,7 @@ pub fn input(day: u8) -> Input {
 pub struct Input(u8);
 
 impl Input {
+    /// Read input and convert to a single value
     pub fn as_value<V>(self) -> V
     where
         V: FromStr,
@@ -27,10 +28,16 @@ impl Input {
         buf.parse().expect("Input value was not valid")
     }
 
+    /// Read input a line at a time
     pub fn by_line(self) -> impl Iterator<Item = String> {
         BufReader::new(self.file())
             .lines()
             .map(|line| line.expect("Failed to read line"))
+    }
+
+    /// Read input, converting each line at a time with the given function
+    pub fn map_by_line<T>(self, map: fn(String) -> T) -> impl Iterator<Item = T> {
+        self.by_line().map(map)
     }
 
     fn download_to(&self, target: &Path) {
