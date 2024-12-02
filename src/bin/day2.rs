@@ -1,11 +1,11 @@
 use aoc24::input;
 pub fn main() {
     let data = input(2).by_line().map(|l| numbers(&l)).collect::<Vec<_>>();
-    let simple = data.iter().filter(|ln| safe(ln, None)).count();
+    let simple = data.iter().filter(|ln| safe(ln.iter())).count();
     println!("Part 1: {simple}");
     let damp = data
         .iter()
-        .filter(|ln| safe(ln, None) || dampened(ln))
+        .filter(|ln| safe(ln.iter()) || dampened(ln))
         .count();
     println!("Part 2: {damp}");
 }
@@ -16,30 +16,28 @@ fn numbers(line: &str) -> Vec<i32> {
         .collect()
 }
 
-fn safe(line: &[i32], skip: Option<usize>) -> bool {
+fn safe<'a>(mut line: impl Iterator<Item = &'a i32>) -> bool {
     let mut inc = false;
     let mut dec = false;
-    for i in 1..line.len() {
-        let prev = match skip {
-            Some(s) if s == i => continue,
-            Some(0) if i == 1 => continue,
-            Some(s) if s == i - 1 => i - 2,
-            Some(_) => i - 1,
-            None => i - 1,
-        };
-        match line[i] - line[prev] {
-            -3..0 => dec = true,
-            0 => return false, // duplicated to silence clippy
-            1..4 => inc = true,
-            _ => return false,
+    let mut prev = line.next().expect("Empty iterator");
+    for v in line {
+        match v - prev {
+            -3..0 if !inc => dec = true,
+            1..4 if !dec => inc = true,
+            0 | _ => return false, // explicit 0 to silence clippy
         }
-        if inc && dec {
-            return false;
-        }
+        prev = v;
     }
     true
 }
 
 fn dampened(line: &[i32]) -> bool {
-    (0..line.len()).any(|i| safe(line, Some(i)))
+    (0..line.len()).any(|i| {
+        safe(
+            line.iter()
+                .enumerate()
+                .filter(|(n, _)| *n != i)
+                .map(|(_, v)| v),
+        )
+    })
 }
