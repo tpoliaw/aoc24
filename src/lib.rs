@@ -58,12 +58,8 @@ impl Input {
         .expect("Couldn't write to input file");
     }
 
-    fn path(&self) -> PathBuf {
-        PathBuf::from(format!("input/day{:02}", self.0))
-    }
-
     fn file(&self) -> File {
-        let loc = self.path();
+        let loc = PathBuf::from(format!("input/day{:02}", self.0));
         if !fs::exists(&loc).expect("Failed to exist file") {
             std::fs::create_dir_all("input").unwrap();
             self.download_to(&loc);
