@@ -67,50 +67,37 @@ pub fn main() {
 
     println!("Part 1: {}", visited.len());
 
+    // Can't put a block in the start position
+    visited.remove(&start);
     let path = visited;
 
     let mut options = 0;
-    for row in 0..height {
-        'cols: for col in 0..width {
-            if area[row][col] == Floor::Blocked {
-                continue;
+    let mut visited = HashSet::new();
+    let mut exact = HashSet::new();
+    for block in path {
+        let mut pos = start;
+        let mut dir = Dir::Up;
+        visited.clear();
+        exact.clear();
+        visited.insert(pos);
+        exact.insert((pos, dir));
+        loop {
+            let Some(nxt) = dir.step(pos) else {
+                break;
+            };
+            if nxt.col >= width || nxt.row >= height {
+                break;
             }
-            let mut pos = start;
-            let mut dir = Dir::Up;
-            let block = Pos { row, col };
-            if pos == block {
-                continue;
-            }
-            if !(path.contains(&block)
-                || Dir::Up.step(block).is_some_and(|p| path.contains(&p))
-                || Dir::Down.step(block).is_some_and(|p| path.contains(&p))
-                || Dir::Right.step(block).is_some_and(|p| path.contains(&p))
-                || Dir::Left.step(block).is_some_and(|p| path.contains(&p)))
-            {
-                continue;
-            }
-            let mut visited = HashSet::new();
-            let mut exact = HashSet::new();
-            visited.insert(pos);
-            exact.insert((pos, dir));
-            loop {
-                let Some(nxt) = dir.step(pos) else {
-                    break;
-                };
-                if nxt.col >= width || nxt.row >= height {
-                    break;
-                }
-                match area[nxt.row][nxt.col] {
-                    Floor::Clear if nxt != block => {
-                        visited.insert(nxt);
-                        if !exact.insert((nxt, dir)) {
-                            options += 1;
-                            continue 'cols;
-                        }
-                        pos = nxt
+            match area[nxt.row][nxt.col] {
+                Floor::Clear if nxt != block => {
+                    visited.insert(nxt);
+                    if !exact.insert((nxt, dir)) {
+                        options += 1;
+                        break;
                     }
-                    _ => dir.turn(),
+                    pos = nxt
                 }
+                _ => dir.turn(),
             }
         }
     }
