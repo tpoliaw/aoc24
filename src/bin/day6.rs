@@ -67,6 +67,8 @@ pub fn main() {
 
     println!("Part 1: {}", visited.len());
 
+    let path = visited;
+
     let mut options = 0;
     for row in 0..height {
         'cols: for col in 0..width {
@@ -77,6 +79,14 @@ pub fn main() {
             let mut dir = Dir::Up;
             let block = Pos { row, col };
             if pos == block {
+                continue;
+            }
+            if !(path.contains(&block)
+                || Dir::Up.step(block).is_some_and(|p| path.contains(&p))
+                || Dir::Down.step(block).is_some_and(|p| path.contains(&p))
+                || Dir::Right.step(block).is_some_and(|p| path.contains(&p))
+                || Dir::Left.step(block).is_some_and(|p| path.contains(&p)))
+            {
                 continue;
             }
             let mut visited = HashSet::new();
