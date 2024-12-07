@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use aoc24::input;
 
 pub fn main() {
@@ -10,53 +8,111 @@ pub fn main() {
     let mut simple = 0;
     let mut complex = 0;
     for cal in cals {
-        if cal.options(false).iter().any(|eq| eq.evaluate() == cal.aim) {
+        if cal.possible::<Simple>() {
             simple += cal.aim;
-        } else if cal.options(true).iter().any(|eq| eq.evaluate() == cal.aim) {
-            complex += cal.aim
+        } else if cal.possible::<Comp>() {
+            complex += cal.aim;
         }
     }
     println!("Part 1: {simple}");
     println!("Part 2: {}", simple + complex);
 }
 
-#[derive(Debug)]
+/// The original calibration values read from the input
 struct Calibration {
     aim: u64,
     values: Vec<u64>,
 }
 
-struct Equation {
+/// A possible combination of operators to evaluate the calibration values
+struct Equation<O> {
     root: u64,
-    ops: Vec<Op>,
+    ops: Vec<O>,
 }
 
-#[derive(Debug, Clone, Copy)]
-enum Op {
+/// Unifying trait over the two sets of operations
+trait Op {
+    fn init(val: u64) -> Self;
+    fn eval(&self, val: u64) -> u64;
+    fn roll(&mut self) -> Overflow;
+}
+
+enum Overflow {
+    None,
+    Carry,
+}
+
+enum Simple {
+    Add(u64),
+    Mul(u64),
+}
+
+enum Comp {
     Add(u64),
     Mul(u64),
     Concat(u64),
 }
 
-impl Equation {
+impl Op for Simple {
+    fn init(val: u64) -> Self {
+        Self::Add(val)
+    }
+    fn eval(&self, val: u64) -> u64 {
+        match self {
+            Simple::Add(a) => val + a,
+            Simple::Mul(m) => val * m,
+        }
+    }
+    fn roll(&mut self) -> Overflow {
+        let (next, ovr) = match self {
+            Self::Add(a) => (Self::Mul(*a), Overflow::None),
+            Self::Mul(m) => (Self::Add(*m), Overflow::Carry),
+        };
+        *self = next;
+        ovr
+    }
+}
+
+impl Op for Comp {
+    fn init(val: u64) -> Self {
+        Self::Add(val)
+    }
+    fn eval(&self, val: u64) -> u64 {
+        match self {
+            Comp::Add(a) => val + a,
+            Comp::Mul(m) => val * m,
+            Comp::Concat(c) => {
+                let digits = c.ilog10() + 1;
+                val * 10u64.pow(digits) + c
+            }
+        }
+    }
+    fn roll(&mut self) -> Overflow {
+        let (next, ovr) = match self {
+            Self::Add(a) => (Self::Mul(*a), Overflow::None),
+            Self::Mul(m) => (Self::Concat(*m), Overflow::None),
+            Self::Concat(c) => (Self::Add(*c), Overflow::Carry),
+        };
+        *self = next;
+        ovr
+    }
+}
+
+impl<O: Op> Equation<O> {
     fn evaluate(&self) -> u64 {
         let mut res = self.root;
         for op in &self.ops {
-            match op {
-                Op::Add(a) => res += a,
-                Op::Mul(m) => res *= m,
-                Op::Concat(c) => res = concat(res, *c),
-            }
+            res = op.eval(res);
         }
         res
     }
-    fn push(&self, op: Op) -> Self {
-        let mut ops = self.ops.clone();
-        ops.push(op);
-        Self {
-            root: self.root,
-            ops,
+    fn next(mut self) -> Option<Self> {
+        for op in self.ops.iter_mut() {
+            if let Overflow::None = op.roll() {
+                return Some(self);
+            }
         }
+        None
     }
 }
 
@@ -72,42 +128,19 @@ impl Calibration {
             .unwrap();
         Self { aim, values }
     }
-
-    fn options(&self, concat: bool) -> Vec<Equation> {
+    fn possible<O: Op>(&self) -> bool {
+        let mut next = Some(self.init::<O>());
+        while let Some(eq) = next {
+            if eq.evaluate() == self.aim {
+                return true;
+            }
+            next = eq.next();
+        }
+        false
+    }
+    fn init<O: Op>(&self) -> Equation<O> {
         let root = self.values[0];
-        let capacity = 2usize.pow((self.values.len() - 1).try_into().unwrap());
-        let mut init = Vec::with_capacity(capacity);
-        let mut opts = Vec::with_capacity(capacity);
-        init.push(Equation { root, ops: vec![] });
-        for v in &self.values[1..] {
-            opts.clear();
-            for eq in init.iter() {
-                opts.push(eq.push(Op::Add(*v)));
-                opts.push(eq.push(Op::Mul(*v)));
-                if concat {
-                    opts.push(eq.push(Op::Concat(*v)))
-                }
-            }
-            std::mem::swap(&mut init, &mut opts);
-        }
-        init
+        let ops = self.values[1..].iter().map(|v| O::init(*v)).collect();
+        Equation { root, ops }
     }
-}
-
-impl Debug for Equation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Eq({}", self.root)?;
-        for op in &self.ops {
-            match op {
-                Op::Add(a) => write!(f, " + {a}")?,
-                Op::Mul(m) => write!(f, " * {m}")?,
-                Op::Concat(c) => write!(f, " || {c}")?,
-            }
-        }
-        f.write_str(")")
-    }
-
-fn concat(l: u64, r: u64) -> u64 {
-    let digits = r.ilog10() + 1;
-    l * 10u64.pow(digits) + r
 }
