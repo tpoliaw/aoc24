@@ -1,0 +1,111 @@
+use std::fmt::Debug;
+
+use aoc24::input;
+
+pub fn main() {
+    let cals = input(7)
+        .map_by_line(Calibration::from_line)
+        .collect::<Vec<_>>();
+
+    let possible = cals
+        .iter()
+        .map(|cal| (cal.aim, cal.options(false)))
+        .filter(|(aim, eqs)| eqs.iter().any(|eq| eq.evaluate() == *aim))
+        .map(|(aim, _)| aim)
+        .sum::<u64>();
+    println!("Part 1: {possible}");
+
+    let possible = cals
+        .iter()
+        .map(|cal| (cal.aim, cal.options(true)))
+        .filter(|(aim, eqs)| eqs.iter().any(|eq| eq.evaluate() == *aim))
+        .map(|(aim, _)| aim)
+        .sum::<u64>();
+    println!("Part 2: {possible}");
+}
+
+#[derive(Debug)]
+struct Calibration {
+    aim: u64,
+    values: Vec<u64>,
+}
+
+struct Equation {
+    root: u64,
+    ops: Vec<Op>,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Op {
+    Add(u64),
+    Mul(u64),
+    Concat(u64),
+}
+
+impl Equation {
+    fn evaluate(&self) -> u64 {
+        let mut res = self.root;
+        for op in &self.ops {
+            match op {
+                Op::Add(a) => res += a,
+                Op::Mul(m) => res *= m,
+                Op::Concat(c) => res = format!("{res}{c}").parse().unwrap(),
+            }
+        }
+        res
+    }
+    fn push(&self, op: Op) -> Self {
+        let mut ops = self.ops.clone();
+        ops.push(op);
+        Self {
+            root: self.root,
+            ops,
+        }
+    }
+}
+
+impl Calibration {
+    fn from_line<S: AsRef<str>>(line: S) -> Self {
+        let line = line.as_ref();
+        let (aim, args) = line.split_once(": ").unwrap();
+        let aim = aim.parse().unwrap();
+        let values = args
+            .split(' ')
+            .map(|a| a.parse())
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        Self { aim, values }
+    }
+
+    fn options(&self, concat: bool) -> Vec<Equation> {
+        let root = self.values[0];
+        let mut init = vec![Equation { root, ops: vec![] }];
+        let mut opts = vec![];
+        for v in &self.values[1..] {
+            opts.clear();
+            for eq in init.iter() {
+                opts.push(eq.push(Op::Add(*v)));
+                opts.push(eq.push(Op::Mul(*v)));
+                if concat {
+                    opts.push(eq.push(Op::Concat(*v)))
+                }
+            }
+            std::mem::swap(&mut init, &mut opts);
+        }
+        init
+    }
+}
+
+impl Debug for Equation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Eq({}", self.root)?;
+        for op in &self.ops {
+            match op {
+                Op::Add(a) => write!(f, " + {a}")?,
+                Op::Mul(m) => write!(f, " * {m}")?,
+                Op::Concat(c) => write!(f, " || {c}")?,
+            }
+        }
+        f.write_str(")")
+    }
+}
