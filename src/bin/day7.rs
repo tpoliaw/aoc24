@@ -7,21 +7,17 @@ pub fn main() {
         .map_by_line(Calibration::from_line)
         .collect::<Vec<_>>();
 
-    let possible = cals
-        .iter()
-        .map(|cal| (cal.aim, cal.options(false)))
-        .filter(|(aim, eqs)| eqs.iter().any(|eq| eq.evaluate() == *aim))
-        .map(|(aim, _)| aim)
-        .sum::<u64>();
-    println!("Part 1: {possible}");
-
-    let possible = cals
-        .iter()
-        .map(|cal| (cal.aim, cal.options(true)))
-        .filter(|(aim, eqs)| eqs.iter().any(|eq| eq.evaluate() == *aim))
-        .map(|(aim, _)| aim)
-        .sum::<u64>();
-    println!("Part 2: {possible}");
+    let mut simple = 0;
+    let mut complex = 0;
+    for cal in cals {
+        if cal.options(false).iter().any(|eq| eq.evaluate() == cal.aim) {
+            simple += cal.aim;
+        } else if cal.options(true).iter().any(|eq| eq.evaluate() == cal.aim) {
+            complex += cal.aim
+        }
+    }
+    println!("Part 1: {simple}");
+    println!("Part 2: {}", simple + complex);
 }
 
 #[derive(Debug)]
