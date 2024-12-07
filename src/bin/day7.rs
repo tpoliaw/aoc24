@@ -45,7 +45,7 @@ impl Equation {
             match op {
                 Op::Add(a) => res += a,
                 Op::Mul(m) => res *= m,
-                Op::Concat(c) => res = format!("{res}{c}").parse().unwrap(),
+                Op::Concat(c) => res = concat(res, *c),
             }
         }
         res
@@ -104,4 +104,8 @@ impl Debug for Equation {
         }
         f.write_str(")")
     }
+
+fn concat(l: u64, r: u64) -> u64 {
+    let digits = r.ilog10() + 1;
+    l * 10u64.pow(digits) + r
 }
