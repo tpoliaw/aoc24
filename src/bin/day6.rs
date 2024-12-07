@@ -72,14 +72,11 @@ pub fn main() {
     let path = visited;
 
     let mut options = 0;
-    let mut visited = HashSet::new();
     let mut exact = HashSet::new();
     for block in path {
         let mut pos = start;
         let mut dir = Dir::Up;
-        visited.clear();
         exact.clear();
-        visited.insert(pos);
         exact.insert((pos, dir));
         loop {
             let Some(nxt) = dir.step(pos) else {
@@ -90,7 +87,6 @@ pub fn main() {
             }
             match area[nxt.row][nxt.col] {
                 Floor::Clear if nxt != block => {
-                    visited.insert(nxt);
                     if !exact.insert((nxt, dir)) {
                         options += 1;
                         break;
