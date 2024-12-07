@@ -75,8 +75,10 @@ impl Calibration {
 
     fn options(&self, concat: bool) -> Vec<Equation> {
         let root = self.values[0];
-        let mut init = vec![Equation { root, ops: vec![] }];
-        let mut opts = vec![];
+        let capacity = 2usize.pow((self.values.len() - 1).try_into().unwrap());
+        let mut init = Vec::with_capacity(capacity);
+        let mut opts = Vec::with_capacity(capacity);
+        init.push(Equation { root, ops: vec![] });
         for v in &self.values[1..] {
             opts.clear();
             for eq in init.iter() {
