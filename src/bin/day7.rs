@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use aoc24::input;
 
 pub fn main() {
@@ -8,9 +10,9 @@ pub fn main() {
     let mut simple = 0;
     let mut complex = 0;
     for cal in cals {
-        if cal.possible::<Simple>() {
+        if cal.possible(Op::roll) {
             simple += cal.aim;
-        } else if cal.possible::<Comp>() {
+        } else if cal.possible(Op::roll_concat) {
             complex += cal.aim;
         }
     }
@@ -24,95 +26,41 @@ struct Calibration {
     values: Vec<u64>,
 }
 
-/// A possible combination of operators to evaluate the calibration values
-struct Equation<O> {
-    root: u64,
-    ops: Vec<O>,
+#[derive(Clone, Copy)]
+enum Op {
+    Add,
+    Mul,
+    Concat,
 }
 
-/// Unifying trait over the two sets of operations
-trait Op {
-    fn init(val: u64) -> Self;
-    fn eval(&self, val: u64) -> u64;
-    fn roll(&mut self) -> Overflow;
-}
-
-enum Overflow {
-    None,
-    Carry,
-}
-
-enum Simple {
-    Add(u64),
-    Mul(u64),
-}
-
-enum Comp {
-    Add(u64),
-    Mul(u64),
-    Concat(u64),
-}
-
-impl Op for Simple {
-    fn init(val: u64) -> Self {
-        Self::Add(val)
-    }
-    fn eval(&self, val: u64) -> u64 {
+impl Op {
+    fn eval(&self, l: u64, r: u64) -> u64 {
         match self {
-            Simple::Add(a) => val + a,
-            Simple::Mul(m) => val * m,
+            Op::Add => l + r,
+            Op::Mul => l * r,
+            Op::Concat => {
+                let digits = r.ilog10() + 1;
+                l * 10u64.pow(digits) + r
+            }
         }
     }
-    fn roll(&mut self) -> Overflow {
+    fn roll(&mut self) -> ControlFlow<()> {
         let (next, ovr) = match self {
-            Self::Add(a) => (Self::Mul(*a), Overflow::None),
-            Self::Mul(m) => (Self::Add(*m), Overflow::Carry),
+            Self::Add => (Self::Mul, ControlFlow::Break(())),
+            Self::Mul => (Self::Add, ControlFlow::Continue(())),
+            Self::Concat => panic!("shouldn't be concat for simple rolls"),
         };
         *self = next;
         ovr
     }
-}
-
-impl Op for Comp {
-    fn init(val: u64) -> Self {
-        Self::Add(val)
-    }
-    fn eval(&self, val: u64) -> u64 {
-        match self {
-            Comp::Add(a) => val + a,
-            Comp::Mul(m) => val * m,
-            Comp::Concat(c) => {
-                let digits = c.ilog10() + 1;
-                val * 10u64.pow(digits) + c
-            }
-        }
-    }
-    fn roll(&mut self) -> Overflow {
+    fn roll_concat(&mut self) -> ControlFlow<()> {
         let (next, ovr) = match self {
-            Self::Add(a) => (Self::Mul(*a), Overflow::None),
-            Self::Mul(m) => (Self::Concat(*m), Overflow::None),
-            Self::Concat(c) => (Self::Add(*c), Overflow::Carry),
+            Self::Add => (Self::Mul, ControlFlow::Break(())),
+            Self::Mul => (Self::Concat, ControlFlow::Break(())),
+            Self::Concat => (Self::Add, ControlFlow::Continue(())),
         };
         *self = next;
         ovr
-    }
-}
-
-impl<O: Op> Equation<O> {
-    fn evaluate(&self) -> u64 {
-        let mut res = self.root;
-        for op in &self.ops {
-            res = op.eval(res);
-        }
-        res
-    }
-    fn next(mut self) -> Option<Self> {
-        for op in self.ops.iter_mut() {
-            if let Overflow::None = op.roll() {
-                return Some(self);
-            }
-        }
-        None
     }
 }
 
@@ -128,19 +76,21 @@ impl Calibration {
             .unwrap();
         Self { aim, values }
     }
-    fn possible<O: Op>(&self) -> bool {
-        let mut next = Some(self.init::<O>());
-        while let Some(eq) = next {
-            if eq.evaluate() == self.aim {
+    fn possible<F: Fn(&mut Op) -> ControlFlow<()>>(&self, f: F) -> bool {
+        let mut ops = Some(vec![Op::Add; self.values.len() - 1]);
+        while let Some(mut eq) = ops {
+            let res = self.values[1..]
+                .iter()
+                .zip(eq.iter())
+                .fold(self.values[0], |r, (v, op)| op.eval(r, *v));
+            if res == self.aim {
                 return true;
             }
-            next = eq.next();
+            ops = match eq.iter_mut().try_for_each(&f) {
+                ControlFlow::Continue(_) => None,
+                ControlFlow::Break(_) => Some(eq),
+            }
         }
         false
-    }
-    fn init<O: Op>(&self) -> Equation<O> {
-        let root = self.values[0];
-        let ops = self.values[1..].iter().map(|v| O::init(*v)).collect();
-        Equation { root, ops }
     }
 }
