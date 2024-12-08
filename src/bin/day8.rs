@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use aoc24::input;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct Pos {
     row: i32,
     col: i32,
@@ -26,12 +26,12 @@ pub fn main() {
     }
 
     let mut nodes = HashSet::new();
-    for (_, locs) in &antennas {
-        for (i, ant1) in locs.iter().enumerate() {
-            for ant2 in locs[i + 1..].iter() {
-                let (a1, a2) = antinodes(*ant1, *ant2);
-                nodes.insert(a1);
-                nodes.insert(a2);
+    for locs in antennas.values() {
+        for (i, a1) in locs.iter().enumerate() {
+            for a2 in locs[i + 1..].iter() {
+                let (n1, n2) = antinodes(*a1, *a2);
+                nodes.insert(n1);
+                nodes.insert(n2);
             }
         }
     }
@@ -40,19 +40,18 @@ pub fn main() {
     println!("Part 1: {count}");
 
     let mut nodes = HashSet::new();
-    for (_, locs) in &antennas {
-        for (i, ant1) in locs.iter().enumerate() {
-            for ant2 in locs[i + 1..].iter() {
-                let (p1, p2) = antinode_stream(*ant1, *ant2);
-                p1.take_while(|p| p.in_area(height, width))
+
+    for locs in antennas.values() {
+        for (i, a1) in locs.iter().enumerate() {
+            for a2 in locs[i + 1..].iter() {
+                let (ns1, ns2) = antinode_stream(*a1, *a2);
+                ns1.take_while(|p| p.in_area(height, width))
                     .for_each(|p| _ = nodes.insert(p));
-                p2.take_while(|p| p.in_area(height, width))
+                ns2.take_while(|p| p.in_area(height, width))
                     .for_each(|p| _ = nodes.insert(p));
             }
         }
     }
-    let mut nodes = nodes.into_iter().collect::<Vec<_>>();
-    nodes.sort_unstable();
     println!("Part 2: {}", nodes.len());
 }
 
