@@ -4,15 +4,11 @@ use aoc24::input;
 
 pub fn main() {
     let disk = input(9).as_value::<String>();
-    let s = std::time::Instant::now();
     let checksum = shuffle_blocks(&disk);
     println!("Part 1: {checksum}");
-    println!("Part 1: {:?}", s.elapsed());
 
-    let s = std::time::Instant::now();
     let checksum = shuffle_ids(&disk);
     println!("Part 2: {checksum}");
-    println!("Part 2: {:?}", s.elapsed());
 }
 
 fn shuffle_blocks(disk: &str) -> u64 {
@@ -54,7 +50,7 @@ fn shuffle_blocks(disk: &str) -> u64 {
 
 fn shuffle_ids(disk: &str) -> u64 {
     let mut mem = BTreeMap::<u32, Block>::new();
-    let mut free = BTreeMap::new();
+    let mut free = BTreeMap::<u32, BTreeSet<u32>>::new();
     let mut idx = 0;
     let mut id = 0;
     let mut disk_map = disk.trim().chars().map(|c| c.to_digit(10).unwrap());
@@ -68,22 +64,32 @@ fn shuffle_ids(disk: &str) -> u64 {
         let Some(len) = disk_map.next() else {
             break;
         };
-        free.insert(idx, len);
+        free.entry(len).or_default().insert(idx);
         idx += len;
     }
     for i in (0..id).rev() {
         let blk = mem.get_mut(&i).unwrap();
-        let Some(tgt) = free
-            .iter()
-            .find(|(_, v)| *v >= &blk.len)
-            .map(|(idx, _)| *idx)
-            .filter(|idx| idx < &blk.idx)
+        // For every memory span long enough for the block, find the earliest index
+        // Of these, find the first, and check it is earlier than the block's current position
+        let Some((len, idx)) = free
+            .range(blk.len..)
+            .flat_map(|(len, opts)| opts.first().map(|idx| (*len, *idx)))
+            .min_by_key(|(_, idx)| *idx)
+            .filter(|(_, idx)| idx < &blk.idx)
         else {
+            // There is no suitable free space
             continue;
         };
-        blk.idx = tgt;
-        let space = free.remove(&tgt).unwrap();
-        free.insert(tgt + blk.len, space - blk.len);
+        // Remove the space from the free map
+        free.get_mut(&len).unwrap().remove(&idx);
+
+        // Move the block
+        blk.idx = idx;
+
+        // Add the remaining free space back to map
+        if len > blk.len {
+            free.entry(len - blk.len).or_default().insert(idx + blk.len);
+        }
     }
     let checksum = mem.iter().map(|(id, blk)| blk.checksum(*id)).sum::<u64>();
     checksum
