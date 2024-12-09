@@ -3,12 +3,24 @@ use std::collections::{BTreeMap, BTreeSet};
 use aoc24::input;
 
 pub fn main() {
+    let disk = input(9).as_value::<String>();
+    let s = std::time::Instant::now();
+    let checksum = shuffle_blocks(&disk);
+    println!("Part 1: {checksum}");
+    println!("Part 1: {:?}", s.elapsed());
+
+    let s = std::time::Instant::now();
+    let checksum = shuffle_ids(&disk);
+    println!("Part 2: {checksum}");
+    println!("Part 2: {:?}", s.elapsed());
+}
+
+fn shuffle_blocks(disk: &str) -> u64 {
+    let mut disk_map = disk.trim().chars().map(|c| c.to_digit(10).unwrap() as u64);
     let mut mem = BTreeMap::<u64, u64>::new();
     let mut free = BTreeSet::new();
     let mut idx = 0;
     let mut id = 0;
-    let disk = input(9).as_value::<String>();
-    let mut disk_map = disk.trim().chars().map(|c| c.to_digit(10).unwrap() as u64);
     loop {
         let Some(len) = disk_map.next() else {
             break;
@@ -27,8 +39,6 @@ pub fn main() {
         idx += len;
     }
 
-    // show(&mem);
-
     while free
         .first()
         .is_some_and(|f| f < mem.last_key_value().unwrap().0)
@@ -37,14 +47,12 @@ pub fn main() {
         let blk = mem.pop_last().unwrap();
         mem.insert(tgt, blk.1);
     }
-    // println!("last free: {:?}", free.last());
-    // println!("")
-
-    // show(&mem);
 
     let checksum = mem.iter().map(|(k, v)| k * v).sum::<u64>();
-    println!("Part 1: {checksum}");
+    checksum
+}
 
+fn shuffle_ids(disk: &str) -> u64 {
     let mut mem = BTreeMap::<u32, Block>::new();
     let mut free = BTreeMap::new();
     let mut idx = 0;
@@ -63,30 +71,22 @@ pub fn main() {
         free.insert(idx, len);
         idx += len;
     }
-    // println!("{mem:#?}");
-    // println!("{free:?}");
     for i in (0..id).rev() {
         let blk = mem.get_mut(&i).unwrap();
         let Some(tgt) = free
             .iter()
             .find(|(_, v)| *v >= &blk.len)
             .map(|(idx, _)| *idx)
+            .filter(|idx| idx < &blk.idx)
         else {
             continue;
         };
-        // println!("ID: {i}, idx: {}, len: {}, target: {tgt}", blk.idx, blk.len);
-        if tgt > blk.idx {
-            continue;
-        }
         blk.idx = tgt;
         let space = free.remove(&tgt).unwrap();
         free.insert(tgt + blk.len, space - blk.len);
-        // println!("  {free:?}");
-        // println!("  {blk:?}");
     }
-    // println!("{mem:#?}");
     let checksum = mem.iter().map(|(id, blk)| blk.checksum(*id)).sum::<u64>();
-    println!("Part 2: {checksum}");
+    checksum
 }
 
 #[derive(Debug)]
@@ -101,14 +101,4 @@ impl Block {
             .map(|i| i as u64 * id as u64)
             .sum::<u64>()
     }
-}
-
-fn show(mem: &BTreeMap<u64, u64>) {
-    for i in 0..=*mem.last_key_value().unwrap().0 {
-        match mem.get(&i) {
-            Some(b) => print!("{b}"),
-            None => print!("."),
-        }
-    }
-    println!();
 }
