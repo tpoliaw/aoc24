@@ -12,10 +12,9 @@ pub fn main() {
 
     println!("Part 1: {p1:?}");
 
-    let shift = 10000000000000.0;
     let p2 = machines
         .into_iter()
-        .map(|m| m.shift(shift))
+        .map(|m| m.shift(10_000_000_000_000.0))
         .filter_map(|m| m.solve())
         .map(|(a, b)| 3 * a + b)
         .sum::<u64>();
@@ -25,28 +24,24 @@ pub fn main() {
 
 #[derive(Debug)]
 struct Machine {
+    // Button A
     x1: f64,
     y1: f64,
 
+    // Button B
     x2: f64,
     y2: f64,
 
+    // Prize location
     xp: f64,
     yp: f64,
 }
 
 impl Machine {
+    /// Determine number of A/B button presses required if an integer solution exists
     fn solve(&self) -> Option<(u64, u64)> {
-        let Self {
-            x1,
-            y1,
-            x2,
-            y2,
-            xp,
-            yp,
-        } = self;
-        let b = (x1 * yp - y1 * xp) / (x1 * y2 - y1 * x2);
-        let a = (xp - x2 * b) / x1;
+        let b = (self.x1 * self.yp - self.y1 * self.xp) / (self.x1 * self.y2 - self.y1 * self.x2);
+        let a = (self.xp - self.x2 * b) / self.x1;
         let a = (a == a.trunc()).then_some(a as u64)?;
         let b = (b == b.trunc()).then_some(b as u64)?;
         Some((a, b))
@@ -60,13 +55,10 @@ impl Machine {
 
 impl From<&str> for Machine {
     fn from(value: &str) -> Self {
-        let mut lines = value.split('\n').map(|ln| ln.split_once(": ").unwrap().1);
-        let a = lines.next().unwrap();
-        let b = lines.next().unwrap();
-        let p = lines.next().unwrap();
-        let (x1, y1) = parse_button(a);
-        let (x2, y2) = parse_button(b);
-        let (xp, yp) = parse_prize(p);
+        let mut lines = value.split('\n');
+        let (x1, y1) = parse_line(lines.next().unwrap(), '+');
+        let (x2, y2) = parse_line(lines.next().unwrap(), '+');
+        let (xp, yp) = parse_line(lines.next().unwrap(), '=');
         Self {
             x1,
             y1,
@@ -78,16 +70,10 @@ impl From<&str> for Machine {
     }
 }
 
-fn parse_button(line: &str) -> (f64, f64) {
-    let (x, y) = line.split_once(", ").unwrap();
-    let x = x.split_once('+').unwrap().1.parse().unwrap();
-    let y = y.split_once('+').unwrap().1.parse().unwrap();
-    (x, y)
-}
-
-fn parse_prize(line: &str) -> (f64, f64) {
-    let (x, y) = line.split_once(", ").unwrap();
-    let x = x.split_once('=').unwrap().1.parse().unwrap();
-    let y = y.split_once('=').unwrap().1.parse().unwrap();
-    (x, y)
+fn parse_line(line: &str, sep: char) -> (f64, f64) {
+    let (_, line) = line.split_once(": ").unwrap();
+    let (l, r) = line.split_once(", ").unwrap();
+    let l = l.split_once(sep).unwrap().1.parse().unwrap();
+    let r = r.split_once(sep).unwrap().1.parse().unwrap();
+    (l, r)
 }
