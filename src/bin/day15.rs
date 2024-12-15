@@ -18,18 +18,32 @@ pub fn main() {
         })
         .collect::<Vec<_>>();
 
-    let p1 = run_single(area, &moves);
+    let (bot, single) = parse_area(area);
+    let p1 = run(bot, single, &moves);
     println!("Part 1: {p1}");
-    let p2 = run_double(area, &moves);
+
+    let (bot, double) = parse_double_area(area);
+    let p2 = run(bot, double, &moves);
     println!("Part 2: {p2}");
 }
 
-fn run_single(area: &str, moves: &[Dir]) -> i32 {
+fn run(mut bot: Pos, mut area: HashMap<Pos, Obj>, moves: &[Dir]) -> i32 {
+    for step in moves {
+        shift(&mut bot, &mut area, *step);
+    }
+
+    area.iter()
+        .filter(|(_, v)| *v == &Obj::Crate || *v == &Obj::HalfLeft)
+        .map(|(k, _)| k.gps())
+        .sum::<i32>()
+}
+
+fn parse_area(area: &str) -> (Pos, HashMap<Pos, Obj>) {
     let width = area.find('\n').unwrap();
     let bot = area.find('@').unwrap();
-    let mut bot = Pos::new(bot / (width + 1), bot % (width + 1));
+    let bot = Pos::new(bot / (width + 1), bot % (width + 1));
 
-    let mut area = area
+    let area = area
         .lines()
         .enumerate()
         .flat_map(|(row, line)| {
@@ -42,23 +56,15 @@ fn run_single(area: &str, moves: &[Dir]) -> i32 {
                 })
         })
         .collect::<HashMap<_, _>>();
-
-    for step in moves {
-        shift(&mut bot, &mut area, *step);
-    }
-
-    area.iter()
-        .filter(|(_, v)| *v == &Obj::Crate)
-        .map(|(k, _)| k.gps())
-        .sum::<i32>()
+    (bot, area)
 }
 
-fn run_double(area: &str, moves: &[Dir]) -> i32 {
+fn parse_double_area(area: &str) -> (Pos, HashMap<Pos, Obj>) {
     let width = area.find('\n').unwrap();
     let bot = area.find('@').unwrap();
-    let mut bot = Pos::new(bot / (width + 1), (bot % (width + 1)) * 2);
+    let bot = Pos::new(bot / (width + 1), (bot % (width + 1)) * 2);
 
-    let mut area = area
+    let area = area
         .lines()
         .enumerate()
         .flat_map(|(row, line)| {
@@ -78,17 +84,10 @@ fn run_double(area: &str, moves: &[Dir]) -> i32 {
         })
         .flatten()
         .collect::<HashMap<_, _>>();
-
-    for step in moves {
-        shift_double(&mut bot, &mut area, *step);
-    }
-    area.iter()
-        .filter(|(_, v)| *v == &Obj::HalfLeft)
-        .map(|(k, _)| k.gps())
-        .sum::<i32>()
+    (bot, area)
 }
 
-fn shift_double(bot: &mut Pos, area: &mut HashMap<Pos, Obj>, step: Dir) {
+fn shift(bot: &mut Pos, area: &mut HashMap<Pos, Obj>, step: Dir) {
     let dest = bot.step(step);
     let front = match area.get(&dest) {
         Some(Obj::HalfLeft) if step.is_vert() => vec![dest, dest.step(Dir::Right)],
@@ -125,13 +124,7 @@ fn shift_all(front: Vec<Pos>, area: &mut HashMap<Pos, Obj>, step: Dir) -> bool {
     }
     if next.values().any(|o| o == &Obj::Wall) {
         false
-    } else if next.is_empty() {
-        for p in front {
-            let obj = area.remove(&p).unwrap();
-            area.insert(p.step(step), obj);
-        }
-        true
-    } else if shift_all(next.keys().cloned().collect(), area, step) {
+    } else if next.is_empty() || shift_all(next.keys().cloned().collect(), area, step) {
         for p in front {
             let obj = area.remove(&p).unwrap();
             area.insert(p.step(step), obj);
@@ -139,24 +132,6 @@ fn shift_all(front: Vec<Pos>, area: &mut HashMap<Pos, Obj>, step: Dir) -> bool {
         true
     } else {
         false
-    }
-}
-
-fn shift(bot: &mut Pos, area: &mut HashMap<Pos, Obj>, step: Dir) {
-    let mut dest = bot.step(step);
-    let tgt = loop {
-        match area.get(&dest) {
-            Some(Obj::Wall) => break None,
-            Some(Obj::Crate) => dest = dest.step(step),
-            Some(_) => panic!(""),
-            None => break Some(dest),
-        }
-    };
-    if let Some(space) = tgt {
-        *bot = bot.step(step);
-        if let Some(_) = area.remove(&*bot) {
-            area.insert(space, Obj::Crate);
-        }
     }
 }
 
@@ -181,6 +156,7 @@ enum Dir {
     Left,
     Right,
 }
+
 impl Dir {
     fn is_vert(&self) -> bool {
         matches!(self, Dir::Up | Dir::Down)
