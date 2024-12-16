@@ -32,24 +32,31 @@ pub fn main() {
 fn min_route(from: Pos, to: Pos, maze: &HashSet<Pos>) -> (usize, usize) {
     let mut visited: HashMap<(Pos, Dir), (usize, Vec<(Pos, Dir)>)> = HashMap::new();
     let mut options = BTreeSet::new();
-    options.insert((0, from, Dir::Right, from));
+    options.insert((0, from, Dir::Right, Option::<(Pos, Dir)>::None));
 
     while let Some((score, pos, dir, prev)) = options.pop_first() {
         if pos == to {
-            let mut cells = HashSet::new();
-            trace_visited(&visited, &(prev, dir), from, &mut cells);
+            let mut cells = [to].into();
+            trace_visited(&visited, &prev.unwrap(), from, &mut cells);
             return (score, cells.len());
         }
         match visited.get_mut(&(pos, dir)) {
             Some(record) if record.0 < score => {}
-            Some(record) if record.0 == score => record.1.push((prev, dir)),
+            Some(record) if record.0 == score => record.1.push(prev.unwrap()),
             _ => {
-                visited.insert((pos, dir), (score, vec![(prev, dir)]));
-                if maze.contains(&(pos + dir)) && (pos + dir) != prev {
-                    options.insert((score + 1, pos + dir, dir, pos));
+                visited.insert((pos, dir), (score, prev.into_iter().collect()));
+                if maze.contains(&(pos + dir)) {
+                    options.insert((score + 1, pos + dir, dir, Some((pos, dir))));
                 }
-                options.insert((score + 1000, pos, dir.left(), prev));
-                options.insert((score + 1000, pos, dir.left().left().left(), prev));
+
+                let left = dir.left();
+                if maze.contains(&(pos + left)) {
+                    options.insert((score + 1000, pos, left, Some((pos, dir))));
+                }
+                let right = dir.right();
+                if maze.contains(&(pos + right)) {
+                    options.insert((score + 1000, pos, right, Some((pos, dir))));
+                }
             }
         }
     }
@@ -62,9 +69,6 @@ fn trace_visited(
     end: Pos,
     counted: &mut HashSet<Pos>,
 ) {
-    if start.0 == end || counted.contains(&start.0) {
-        return;
-    }
     counted.insert(start.0);
     let prev = &route[&start].1;
     prev.iter()
@@ -98,6 +102,14 @@ impl Pos {
 }
 
 impl Dir {
+    fn right(self) -> Self {
+        match self {
+            Dir::Up => Dir::Right,
+            Dir::Right => Dir::Down,
+            Dir::Down => Dir::Left,
+            Dir::Left => Dir::Up,
+        }
+    }
     fn left(self) -> Self {
         match self {
             Dir::Up => Dir::Left,
