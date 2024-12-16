@@ -55,13 +55,11 @@ fn min_route(from: Pos, to: Pos, maze: &HashSet<Pos>) -> (usize, usize) {
                     options.insert((score + 1, pos + dir, dir, Some((pos, dir))));
                 }
 
-                let left = dir.left();
-                if maze.contains(&(pos + left)) {
-                    options.insert((score + 1000, pos, left, Some((pos, dir))));
+                if maze.contains(&(pos + dir.left())) {
+                    options.insert((score + 1000, pos, dir.left(), Some((pos, dir))));
                 }
-                let right = dir.right();
-                if maze.contains(&(pos + right)) {
-                    options.insert((score + 1000, pos, right, Some((pos, dir))));
+                if maze.contains(&(pos + dir.right())) {
+                    options.insert((score + 1000, pos, dir.right(), Some((pos, dir))));
                 }
             }
         }
@@ -137,23 +135,12 @@ impl Add<Dir> for Pos {
     type Output = Pos;
 
     fn add(self, rhs: Dir) -> Self::Output {
+        let Pos { row: r, col: c } = self;
         match rhs {
-            Dir::Up => Self {
-                row: self.row - 1,
-                col: self.col,
-            },
-            Dir::Right => Self {
-                row: self.row,
-                col: self.col + 1,
-            },
-            Dir::Down => Self {
-                row: self.row + 1,
-                col: self.col,
-            },
-            Dir::Left => Self {
-                row: self.row,
-                col: self.col - 1,
-            },
+            Dir::Up => Self { row: r - 1, col: c },
+            Dir::Right => Self { row: r, col: c + 1 },
+            Dir::Down => Self { row: r + 1, col: c },
+            Dir::Left => Self { row: r, col: c - 1 },
         }
     }
 }
