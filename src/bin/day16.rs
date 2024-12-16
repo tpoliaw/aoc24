@@ -33,12 +33,18 @@ fn min_route(from: Pos, to: Pos, maze: &HashSet<Pos>) -> (usize, usize) {
     let mut visited: HashMap<(Pos, Dir), (usize, Vec<(Pos, Dir)>)> = HashMap::new();
     let mut options = BTreeSet::new();
     options.insert((0, from, Dir::Right, Option::<(Pos, Dir)>::None));
+    let mut pb = Option::<(usize, Vec<(Pos, Dir)>)>::None;
 
     while let Some((score, pos, dir, prev)) = options.pop_first() {
+        if pb.as_ref().is_some_and(|v| v.0 < score) {
+            break;
+        }
         if pos == to {
-            let mut cells = [to].into();
-            trace_visited(&visited, &prev.unwrap(), from, &mut cells);
-            return (score, cells.len());
+            match pb.as_mut() {
+                Some((sc, _)) if *sc < score => {}
+                Some((sc, prev)) if *sc == score => prev.push((pos, dir)),
+                _ => pb = Some((score, vec![(pos, dir)])),
+            }
         }
         match visited.get_mut(&(pos, dir)) {
             Some(record) if record.0 < score => {}
@@ -60,7 +66,14 @@ fn min_route(from: Pos, to: Pos, maze: &HashSet<Pos>) -> (usize, usize) {
             }
         }
     }
-    panic!("Route not found")
+    let Some((score, prev)) = pb else {
+        panic!("Route not found");
+    };
+    let mut cells = HashSet::new();
+    for p in prev {
+        trace_visited(&visited, &p, from, &mut cells);
+    }
+    (score, cells.len())
 }
 
 fn trace_visited(
