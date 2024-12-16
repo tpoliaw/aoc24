@@ -21,36 +21,54 @@ pub fn main() {
             ln.chars()
                 .enumerate()
                 .filter(|(_, c)| *c != '#')
-                .map(move |(col, c)| Pos::new(row, col))
+                .map(move |(col, _)| Pos::new(row, col))
         })
         .collect::<HashSet<_>>();
-    println!("{start:?} -> {end:?}");
-    println!("Part 1: {}", min_route(start, end, &maze));
+    let (score, count) = min_route(start, end, &maze);
+    println!("Part 1: {score}");
+    println!("Part 2: {count}");
 }
 
-fn min_route(from: Pos, to: Pos, maze: &HashSet<Pos>) -> usize {
-    let mut pos = (from, Dir::Right);
-    let mut visited = HashMap::new();
+fn min_route(from: Pos, to: Pos, maze: &HashSet<Pos>) -> (usize, usize) {
+    let mut visited: HashMap<(Pos, Dir), (usize, Vec<(Pos, Dir)>)> = HashMap::new();
     let mut options = BTreeSet::new();
-    options.insert((0, from, Dir::Right));
+    options.insert((0, from, Dir::Right, from));
 
-    while let Some((score, pos, dir)) = options.pop_first() {
+    while let Some((score, pos, dir, prev)) = options.pop_first() {
         if pos == to {
-            return score;
+            let mut cells = HashSet::new();
+            trace_visited(&visited, &(prev, dir), from, &mut cells);
+            return (score, cells.len());
         }
-        if visited.get(&(pos, dir)).is_none_or(|v| *v >= score) {
-            visited.insert((pos, dir), score);
-            if maze.contains(&(pos + dir)) {
-                options.insert((score + 1, pos + dir, dir));
+        match visited.get_mut(&(pos, dir)) {
+            Some(record) if record.0 < score => {}
+            Some(record) if record.0 == score => record.1.push((prev, dir)),
+            _ => {
+                visited.insert((pos, dir), (score, vec![(prev, dir)]));
+                if maze.contains(&(pos + dir)) && (pos + dir) != prev {
+                    options.insert((score + 1, pos + dir, dir, pos));
+                }
+                options.insert((score + 1000, pos, dir.left(), prev));
+                options.insert((score + 1000, pos, dir.left().left().left(), prev));
             }
-            options.insert((score + 1000, pos, dir.left()));
-            options.insert((score + 1000, pos, dir.left().left().left()));
-            // forwards if not a wall
-            // left
-            // right
         }
     }
     panic!("Route not found")
+}
+
+fn trace_visited(
+    route: &HashMap<(Pos, Dir), (usize, Vec<(Pos, Dir)>)>,
+    start: &(Pos, Dir),
+    end: Pos,
+    counted: &mut HashSet<Pos>,
+) {
+    if start.0 == end || counted.contains(&start.0) {
+        return;
+    }
+    counted.insert(start.0);
+    let prev = &route[&start].1;
+    prev.iter()
+        .for_each(|loc| trace_visited(route, loc, end, counted));
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
