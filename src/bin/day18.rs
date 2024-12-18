@@ -6,28 +6,44 @@ use std::{
 use aoc24::input;
 
 pub fn main() {
-    let mem = input(18)
-        .map_by_line(Pos::from_line)
-        .take(1024)
-        .collect::<HashSet<_>>();
+    let all = input(18).map_by_line(Pos::from_line).collect::<Vec<_>>();
 
     let start = Pos { row: 0, col: 0 };
     let end = Pos { row: 70, col: 70 };
-    let p1 = find_route(start, end, &mem).unwrap();
-    println!("Part 1: {}", p1);
 
-    let all = input(18).map_by_line(Pos::from_line).collect::<Vec<_>>();
-    let mut low = 1024;
-    let mut high = all.len();
-    while high > low + 1 {
-        let mid = (high + low) / 2;
-        let mem = all[..=mid].iter().cloned().collect::<HashSet<_>>();
-        match find_route(start, end, &mem) {
-            Some(_) => low = mid,
-            None => high = mid,
+    let mem = all[..1024].iter().cloned().collect();
+    let visited = find_route(end, &mem, [(0, start)].into(), HashMap::new());
+    println!("Part 1: {}", visited[&end]);
+
+    let mut mem = all.iter().cloned().collect::<HashSet<_>>();
+    let mut visited = find_route(end, &mem, [(0, start)].into(), HashMap::new());
+    for byte in all.into_iter().rev() {
+        mem.remove(&byte);
+        visited = find_route(
+            end,
+            &mem,
+            [
+                visited.get(&(byte + Dir::Up)).map(|d| (*d, byte + Dir::Up)),
+                visited
+                    .get(&(byte + Dir::Left))
+                    .map(|d| (*d, byte + Dir::Left)),
+                visited
+                    .get(&(byte + Dir::Down))
+                    .map(|d| (*d, byte + Dir::Down)),
+                visited
+                    .get(&(byte + Dir::Right))
+                    .map(|d| (*d, byte + Dir::Right)),
+            ]
+            .into_iter()
+            .flatten()
+            .collect(),
+            visited,
+        );
+        if visited.contains_key(&end) {
+            println!("Part 2: {},{}", byte.row, byte.col);
+            break;
         }
     }
-    println!("Part 2: {},{}", all[high].row, all[high].col);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -43,15 +59,17 @@ enum Dir {
     Right,
 }
 
-fn find_route(start: Pos, end: Pos, mem: &HashSet<Pos>) -> Option<usize> {
-    let mut visited = HashMap::new();
-    let mut options = BTreeSet::new();
-    options.insert((0, start));
+fn find_route(
+    end: Pos,
+    mem: &HashSet<Pos>,
+    mut options: BTreeSet<(usize, Pos)>,
+    mut visited: HashMap<Pos, usize>,
+) -> HashMap<Pos, usize> {
     while let Some((d, pos)) = options.pop_first() {
         if !pos.in_limits(end) {
             continue;
         }
-        if visited.get(&pos).is_some_and(|v| *v <= d) {
+        if visited.get(&pos).is_some_and(|v| *v < d) {
             continue;
         }
         if mem.contains(&pos) {
@@ -67,7 +85,7 @@ fn find_route(start: Pos, end: Pos, mem: &HashSet<Pos>) -> Option<usize> {
         options.insert((d + 1, pos + Dir::Right));
     }
 
-    visited.get(&end).cloned()
+    visited
 }
 
 impl Pos {
