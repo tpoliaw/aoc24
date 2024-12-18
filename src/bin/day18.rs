@@ -19,26 +19,11 @@ pub fn main() {
     let mut visited = find_route(end, &mem, [(0, start)].into(), HashMap::new());
     for byte in all.into_iter().rev() {
         mem.remove(&byte);
-        visited = find_route(
-            end,
-            &mem,
-            [
-                visited.get(&(byte + Dir::Up)).map(|d| (*d, byte + Dir::Up)),
-                visited
-                    .get(&(byte + Dir::Left))
-                    .map(|d| (*d, byte + Dir::Left)),
-                visited
-                    .get(&(byte + Dir::Down))
-                    .map(|d| (*d, byte + Dir::Down)),
-                visited
-                    .get(&(byte + Dir::Right))
-                    .map(|d| (*d, byte + Dir::Right)),
-            ]
-            .into_iter()
-            .flatten()
-            .collect(),
-            visited,
-        );
+        let adjacent: BTreeSet<(usize, Pos)> = Dir::each()
+            .map(|d| byte + d)
+            .flat_map(|b| visited.get(&b).map(|d| (*d, b)))
+            .collect();
+        visited = find_route(end, &mem, adjacent, visited);
         if visited.contains_key(&end) {
             println!("Part 2: {},{}", byte.row, byte.col);
             break;
@@ -79,15 +64,17 @@ fn find_route(
         if pos == end {
             break;
         }
-        options.insert((d + 1, pos + Dir::Up));
-        options.insert((d + 1, pos + Dir::Down));
-        options.insert((d + 1, pos + Dir::Left));
-        options.insert((d + 1, pos + Dir::Right));
+        options.extend(Dir::each().map(|dr| (d + 1, pos + dr)));
     }
 
     visited
 }
 
+impl Dir {
+    fn each() -> impl Iterator<Item = Self> {
+        [Dir::Up, Dir::Down, Dir::Right, Dir::Left].into_iter()
+    }
+}
 impl Pos {
     fn from_line(ln: String) -> Self {
         let (r, c) = ln.split_once(',').unwrap();
