@@ -6,7 +6,7 @@ use std::{
 use aoc24::input;
 
 pub fn main() {
-    let mut mem = input(18)
+    let mem = input(18)
         .map_by_line(Pos::from_line)
         .take(1024)
         .collect::<HashSet<_>>();
@@ -14,22 +14,23 @@ pub fn main() {
     let start = Pos { row: 0, col: 0 };
     let end = Pos { row: 70, col: 70 };
     let p1 = find_route(start, end, &mem).unwrap();
-    println!("Part 1: {}", p1.len());
+    println!("Part 1: {}", p1);
 
-    let mut route = p1;
-    for byte in input(18).map_by_line(Pos::from_line).skip(1024) {
-        mem.insert(byte);
-        if route.contains(&byte) {
-            let Some(new_route) = find_route(start, end, &mem) else {
-                println!("Part 2: {},{}", byte.row, byte.col);
-                break;
-            };
-            route = new_route;
+    let all = input(18).map_by_line(Pos::from_line).collect::<Vec<_>>();
+    let mut low = 1024;
+    let mut high = all.len();
+    while high > low + 1 {
+        let mid = (high + low) / 2;
+        let mem = all[..=mid].iter().cloned().collect::<HashSet<_>>();
+        match find_route(start, end, &mem) {
+            Some(_) => low = mid,
+            None => high = mid,
         }
     }
+    println!("Part 2: {},{}", all[high].row, all[high].col);
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 struct Pos {
     row: i32,
     col: i32,
@@ -42,37 +43,31 @@ enum Dir {
     Right,
 }
 
-fn find_route(start: Pos, end: Pos, mem: &HashSet<Pos>) -> Option<HashSet<Pos>> {
+fn find_route(start: Pos, end: Pos, mem: &HashSet<Pos>) -> Option<usize> {
     let mut visited = HashMap::new();
     let mut options = BTreeSet::new();
-    options.insert((0, start, start));
-    while let Some((d, pos, prev)) = options.pop_first() {
+    options.insert((0, start));
+    while let Some((d, pos)) = options.pop_first() {
         if !pos.in_limits(end) {
             continue;
         }
-        if visited.get(&pos).is_some_and(|v: &(usize, Pos)| v.0 <= d) {
+        if visited.get(&pos).is_some_and(|v| *v <= d) {
             continue;
         }
         if mem.contains(&pos) {
             continue;
         }
-        visited.insert(pos, (d, prev));
+        visited.insert(pos, d);
         if pos == end {
             break;
         }
-        options.insert((d + 1, pos + Dir::Up, pos));
-        options.insert((d + 1, pos + Dir::Down, pos));
-        options.insert((d + 1, pos + Dir::Left, pos));
-        options.insert((d + 1, pos + Dir::Right, pos));
+        options.insert((d + 1, pos + Dir::Up));
+        options.insert((d + 1, pos + Dir::Down));
+        options.insert((d + 1, pos + Dir::Left));
+        options.insert((d + 1, pos + Dir::Right));
     }
 
-    let mut route: HashSet<Pos> = [end].into();
-    let mut prev = end;
-    while prev != start {
-        (_, prev) = *visited.get(&prev)?;
-        route.insert(prev);
-    }
-    Some(route)
+    visited.get(&end).cloned()
 }
 
 impl Pos {
