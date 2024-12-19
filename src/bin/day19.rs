@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use aoc24::input;
 
 pub fn main() {
-    let src = input(19).as_value::<String>();
+    let src = input(19).string();
     let (towels, designs) = src.split_once("\n\n").unwrap();
     let towels = towels.split(", ").collect::<Vec<_>>();
     let designs = designs.lines().collect::<Vec<_>>();

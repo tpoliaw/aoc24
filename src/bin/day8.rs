@@ -9,7 +9,7 @@ struct Pos {
 }
 
 pub fn main() {
-    let src = input(8).as_value::<String>();
+    let src = input(8).string();
     let width = src.find('\n').unwrap();
     let height = (src.len() / (width + 1)) as i32;
     let width = width as i32;

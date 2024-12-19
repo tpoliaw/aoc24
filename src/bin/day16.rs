@@ -7,7 +7,7 @@ use std::{
 use aoc24::input;
 
 pub fn main() {
-    let src = input(16).as_value::<String>();
+    let src = input(16).string();
     let width = src.find('\n').unwrap();
     let start = src.find('S').unwrap();
     let end = src.find('E').unwrap();

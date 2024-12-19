@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use aoc24::input;
 
 pub fn main() {
-    let src = input(15).as_value::<String>();
+    let src = input(15).string();
     let (area, moves) = src.split_once("\n\n").unwrap();
 
     let moves = moves

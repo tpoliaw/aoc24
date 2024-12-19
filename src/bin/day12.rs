@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use aoc24::input;
 
 pub fn main() {
-    let src = input(12).as_value::<String>();
+    let src = input(12).string();
     let regions = build_regions(&src);
     println!(
         "Part 1: {}",

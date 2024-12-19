@@ -1,7 +1,7 @@
 use aoc24::input;
 
 pub fn main() {
-    let src = input(13).as_value::<String>();
+    let src = input(13).string();
     let machines = src.split("\n\n").map(Machine::from).collect::<Vec<_>>();
 
     let p1 = machines

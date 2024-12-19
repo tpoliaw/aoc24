@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use aoc24::input;
 
 pub fn main() {
-    let src = input(5).as_value::<String>();
+    let src = input(5).string();
     let (rules, updates) = src.split_once("\n\n").unwrap();
     let rules = rules
         .lines()

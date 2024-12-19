@@ -4,7 +4,7 @@ use aoc24::input;
 
 pub fn main() {
     let stones = input(11)
-        .as_value::<String>()
+        .string()
         .trim()
         .split_whitespace()
         .map(|n| n.parse::<u64>().unwrap())

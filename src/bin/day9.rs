@@ -3,7 +3,7 @@ use std::collections::{BTreeSet, VecDeque};
 use aoc24::input;
 
 pub fn main() {
-    let disk = input(9).as_value::<String>();
+    let disk = input(9).string();
     let checksum = shuffle_blocks(&disk);
     println!("Part 1: {checksum}");
 

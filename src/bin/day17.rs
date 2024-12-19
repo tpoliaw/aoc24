@@ -1,7 +1,7 @@
 use aoc24::input;
 
 pub fn main() {
-    let src = input(17).as_value::<String>();
+    let src = input(17).string();
     let (regs, ops) = src.split_once("\n\n").unwrap();
     let mut regs = regs
         .lines()

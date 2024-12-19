@@ -15,6 +15,9 @@ pub fn input(day: u8) -> Input {
 pub struct Input(u8);
 
 impl Input {
+    pub fn string(self) -> String {
+        self.as_value()
+    }
     /// Read input and convert to a single value
     pub fn as_value<V>(self) -> V
     where

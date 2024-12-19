@@ -23,7 +23,7 @@ enum Dir {
 }
 
 pub fn main() {
-    let start = input(6).as_value::<String>().find('^').unwrap();
+    let start = input(6).string().find('^').unwrap();
     let area = input(6)
         .map_by_line(|ln| {
             ln.chars()
