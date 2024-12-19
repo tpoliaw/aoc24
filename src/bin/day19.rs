@@ -28,12 +28,11 @@ fn possible<'d>(design: &'d str, options: &[&str], history: &mut HashMap<&'d str
     } else if let Some(v) = history.get(design) {
         return *v;
     }
-    let mut count = 0;
-    for opt in options {
-        if design.starts_with(opt) {
-            count += possible(&design[opt.len()..], options, history);
-        }
-    }
+    let count = options
+        .iter()
+        .filter_map(|o| design.strip_prefix(o))
+        .map(|r| possible(r, options, history))
+        .sum::<usize>();
     history.insert(design, count);
     count
 }
