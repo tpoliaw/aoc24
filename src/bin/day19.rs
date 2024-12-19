@@ -8,15 +8,16 @@ pub fn main() {
     let towels = towels.split(", ").collect::<Vec<_>>();
     let designs = designs.lines().collect::<Vec<_>>();
 
+    let mut history = HashMap::new();
     let p1 = designs
         .iter()
-        .filter(|d| possible(d, &towels, &mut HashMap::new()) > 0)
+        .filter(|d| possible(d, &towels, &mut history) > 0)
         .count();
     println!("Part 1: {p1}");
 
     let p2 = designs
         .iter()
-        .map(|d| possible(d, &towels, &mut HashMap::new()))
+        .map(|d| possible(d, &towels, &mut history))
         .sum::<usize>();
     println!("Part 2: {p2}");
 }
