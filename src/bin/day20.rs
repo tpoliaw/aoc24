@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     ops::Add,
 };
 
@@ -21,11 +21,10 @@ pub fn main() {
         })
         .collect::<Vec<_>>();
 
-    let mut walls = all.iter().cloned().collect::<HashSet<_>>();
+    let walls = all.iter().cloned().collect::<HashSet<_>>();
     println!("Walls: {}", walls.len());
 
     let width = src.find('\n').unwrap();
-    let height = src.len() / (width + 1);
     let start = src.find('S').unwrap();
     let end = src.find('E').unwrap();
     let start = Pos {
@@ -37,58 +36,62 @@ pub fn main() {
         col: (end % (width + 1)) as i32,
     };
 
-    let limit = Pos {
-        row: height as i32,
-        col: width as i32,
-    };
-    let baseline = min_route(start, end, &walls, limit);
+    let from_start = min_dists(start, &walls);
+    let from_end = min_dists(end, &walls);
+    assert!(from_end[&start] == from_start[&end]);
+
+    let baseline = from_end[&start];
     println!("Baseline: {baseline}");
-    let mut cheats: HashMap<usize, usize> = HashMap::new();
-    let mut step = 0;
-    for wall in all {
-        print!("\r{step}/{}", walls.len());
-        if wall.neighbours(&walls) >= 2 {
-            walls.remove(&wall);
-            let min = min_route(start, end, &walls, limit);
-            print!("  = {min}");
-            if min < baseline {
-                *cheats.entry(baseline - min).or_default() += 1;
-            }
-            walls.insert(wall);
-        }
-        step += 1;
-    }
-    println!();
-    let p1 = cheats
-        .iter()
-        .filter(|(k, _)| **k >= 100)
-        .map(|(_, v)| v)
-        .sum::<usize>();
+
+    let p1 = count_cheats(&from_start, &from_end, baseline, 2);
     println!("Part 1: {p1}");
+    let p2 = count_cheats(&from_start, &from_end, baseline, 20);
+    println!("Part 2: {p2}");
 }
 
-fn min_route(start: Pos, end: Pos, walls: &HashSet<Pos>, limit: Pos) -> usize {
+fn count_cheats(
+    from_start: &BTreeMap<Pos, usize>,
+    from_end: &BTreeMap<Pos, usize>,
+    baseline: usize,
+    skips: u32,
+) -> usize {
+    let mut cheats: HashMap<usize, usize> = HashMap::new();
+    for (cell, sdist) in from_start.iter().filter(|(_, v)| **v < baseline) {
+        for (end, edist) in from_end
+            .iter()
+            .filter(|(_, v)| **v < baseline - sdist - skips as usize)
+        {
+            let offset = cell.row.abs_diff(end.row) + cell.col.abs_diff(end.col);
+            if offset <= skips {
+                let dist = sdist + edist + offset as usize;
+                if dist < baseline {
+                    *cheats.entry(baseline - dist).or_default() += 1;
+                }
+            }
+        }
+    }
+    cheats
+        .iter()
+        .filter(|(k, _)| **k >= skips as usize)
+        .map(|(_, v)| v)
+        .sum::<usize>()
+}
+
+fn min_dists(start: Pos, walls: &HashSet<Pos>) -> BTreeMap<Pos, usize> {
     let mut options: BTreeSet<(usize, Pos)> = [(0, start)].into();
-    let mut visited = HashMap::new();
+    let mut visited = BTreeMap::new();
     while let Some((d, pos)) = options.pop_first() {
         if visited.get(&pos).is_some_and(|v| *v < d) {
             continue;
         }
-        if !pos.in_limits(limit) {
-            continue;
-        }
         if walls.contains(&pos) {
-            //} && !jump.is_some_and(|p| p == pos) {
             continue;
         }
         visited.insert(pos, d);
-        if pos == end {
-            break;
-        }
         options.extend(Dir::each().map(|dr| (d + 1, pos + dr)));
     }
 
-    *visited.get(&end).unwrap()
+    visited
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
