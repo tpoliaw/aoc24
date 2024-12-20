@@ -36,8 +36,8 @@ pub fn main() {
         col: (end % (width + 1)) as i32,
     };
 
-    let from_start = min_dists(start, &walls);
-    let from_end = min_dists(end, &walls);
+    let from_start = min_dists(start, end, &walls);
+    let from_end = min_dists(end, start, &walls);
     assert!(from_end[&start] == from_start[&end]);
 
     let baseline = from_end[&start];
@@ -56,7 +56,7 @@ fn count_cheats(
     skips: u32,
 ) -> usize {
     let mut cheats: HashMap<usize, usize> = HashMap::new();
-    for (cell, sdist) in from_start.iter().filter(|(_, v)| **v < baseline) {
+    for (cell, sdist) in from_start.iter() {
         for (end, edist) in from_end
             .iter()
             .filter(|(_, v)| **v < baseline - sdist - skips as usize)
@@ -72,12 +72,12 @@ fn count_cheats(
     }
     cheats
         .iter()
-        .filter(|(k, _)| **k >= skips as usize)
+        .filter(|(k, _)| **k >= 100)
         .map(|(_, v)| v)
         .sum::<usize>()
 }
 
-fn min_dists(start: Pos, walls: &HashSet<Pos>) -> BTreeMap<Pos, usize> {
+fn min_dists(start: Pos, end: Pos, walls: &HashSet<Pos>) -> BTreeMap<Pos, usize> {
     let mut options: BTreeSet<(usize, Pos)> = [(0, start)].into();
     let mut visited = BTreeMap::new();
     while let Some((d, pos)) = options.pop_first() {
@@ -88,6 +88,9 @@ fn min_dists(start: Pos, walls: &HashSet<Pos>) -> BTreeMap<Pos, usize> {
             continue;
         }
         visited.insert(pos, d);
+        if end == pos {
+            break;
+        }
         options.extend(Dir::each().map(|dr| (d + 1, pos + dr)));
     }
 
