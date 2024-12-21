@@ -79,7 +79,7 @@ pub fn main() {
 
     let codes = codes
         .into_iter()
-        .map(|(k, v)| (k, paths(&v, &digit_map, &mut HashMap::new())))
+        .map(|(k, v)| (k, paths(v, &digit_map, &mut HashMap::new())))
         .collect::<Vec<_>>();
 
     let mut pair_cache = HashMap::new();
@@ -124,7 +124,7 @@ fn chained(
     let segments = paths(code, pairs, pair_cache);
     let len = segments
         .iter()
-        .map(|s| chained(&s, pairs, pair_cache, len_cache, steps - 1))
+        .map(|s| chained(s, pairs, pair_cache, len_cache, steps - 1))
         .sum();
     len_cache.entry(code.into()).or_default().insert(steps, len);
     len
@@ -154,23 +154,11 @@ fn map_pairs(buttons: &HashMap<char, (u8, u8)>) -> HashMap<(char, char), String>
     let mut pairs = HashMap::new();
     for (b1, (r1, c1)) in buttons {
         for (b2, (r2, c2)) in buttons {
-            if b1 == b2 {
-                pairs.insert((*b1, *b2), String::new());
-                continue;
-            }
-
             let mut pair = String::new();
-            if c2 < c1 {
-                (0..(c1 - c2)).for_each(|_| pair.push('<'));
-            }
-            if r1 < r2 {
-                (0..(r2 - r1)).for_each(|_| pair.push('v'));
-            } else if r2 < r1 {
-                (0..(r1 - r2)).for_each(|_| pair.push('^'));
-            }
-            if c1 < c2 {
-                (0..(c2 - c1)).for_each(|_| pair.push('>'));
-            }
+            (0..c1.saturating_sub(*c2)).for_each(|_| pair.push('<'));
+            (0..r2.saturating_sub(*r1)).for_each(|_| pair.push('v'));
+            (0..r1.saturating_sub(*r2)).for_each(|_| pair.push('^'));
+            (0..c2.saturating_sub(*c1)).for_each(|_| pair.push('>'));
             pairs.insert((*b1, *b2), pair);
         }
     }
