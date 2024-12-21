@@ -46,88 +46,45 @@ pub fn main() {
     .into_iter()
     .collect::<HashMap<_, _>>();
 
-    let mut digit_map = map_pairs(&digits);
-
-    digit_map
-        .iter_mut()
-        .filter(|((b1, _), _)| *b1 == '0')
-        .for_each(|(_, v)| v.retain(|p| p.first().is_none_or(|m| *m != Move::Left)));
-    digit_map
-        .iter_mut()
-        .filter(|((b1, _), _)| *b1 == 'A')
-        .for_each(|(_, v)| {
-            v.retain(|p| {
-                p.first().is_none_or(|m| *m != Move::Left)
-                    || p.get(1).is_none_or(|m| *m != Move::Left)
-            })
-        });
-
-    digit_map
-        .iter_mut()
-        .filter(|((b1, _), _)| *b1 == '1')
-        .for_each(|(_, v)| v.retain(|p| p.first().is_none_or(|m| *m != Move::Down)));
-    digit_map
-        .iter_mut()
-        .filter(|((b1, _), _)| *b1 == '4')
-        .for_each(|(_, v)| {
-            v.retain(|p| {
-                p.first().is_none_or(|m| *m != Move::Down)
-                    || p.get(1).is_none_or(|m| *m != Move::Down)
-            })
-        });
-    digit_map
-        .iter_mut()
-        .filter(|((b1, _), _)| *b1 == '7')
-        .for_each(|(_, v)| {
-            v.retain(|p| {
-                p.first().is_none_or(|m| *m != Move::Down)
-                    || p.get(1).is_none_or(|m| *m != Move::Down)
-                    || p.get(2).is_none_or(|m| *m != Move::Down)
-            })
-        });
-    let digit_map = digit_map
-        .into_iter()
-        .map(|(k, mut v)| {
-            (k, {
-                v.sort_unstable();
-                v.remove(0)
-            })
-        })
-        .collect::<HashMap<(char, char), Vec<Move>>>();
-
-    // moves should be grouped and sorted left to right where possible, the blank space means this
-    // isn't always possible
-    let arrow_map: HashMap<(char, char), Vec<Move>> = [
-        // A -> ?
-        (('A', 'A'), ""),
-        (('A', '<'), "v<<"), // blank space
-        (('A', 'v'), "<v"),
-        (('A', '>'), "v"),
-        (('A', '^'), "<"),
-        // < -> ?
-        (('<', 'A'), ">>^"), // blank space
-        (('<', '<'), ""),
-        (('<', 'v'), ">"),
-        (('<', '^'), ">^"), // blank space
-        // v -> ?
-        (('v', 'A'), "^>"),
-        (('v', '<'), "<"),
-        (('v', 'v'), ""),
-        (('v', '>'), ">"),
-        // > -> ?
-        (('>', 'A'), "^"),
-        (('>', 'v'), "<"),
-        (('>', '>'), ""),
-        (('>', '^'), "<^"),
-        // ^ -> ?
-        (('^', 'A'), ">"),
-        (('^', '<'), "v<"),
-        (('^', '>'), "v>"), // blank space
-        (('^', '^'), ""),
+    let arrows = [
+        ('^', (0, 1)),
+        ('A', (0, 2)),
+        ('<', (1, 0)),
+        ('v', (1, 1)),
+        ('>', (1, 2)),
     ]
     .into_iter()
-    .map(|(p, v)| (p, v.chars().map(Move::from_char).collect::<Vec<_>>()))
-    .collect();
+    .collect::<HashMap<_, _>>();
+
+    let mut digit_map = map_pairs(&digits);
+    let mut arrow_map = map_pairs(&arrows);
+
+    // Pairs are mapped with moves grouped and sorted left to right on the key pad, the pairs where
+    // this is not possible due to the blank space need to be modified manually to go the 'wrong'
+    // way.
+    *digit_map.get_mut(&('7', '0')).unwrap() =
+        vec![Move::Right, Move::Down, Move::Down, Move::Down];
+    *digit_map.get_mut(&('7', 'A')).unwrap() =
+        vec![Move::Right, Move::Right, Move::Down, Move::Down, Move::Down];
+    *digit_map.get_mut(&('4', '0')).unwrap() = vec![Move::Right, Move::Down, Move::Down];
+    *digit_map.get_mut(&('4', 'A')).unwrap() =
+        vec![Move::Right, Move::Right, Move::Down, Move::Down];
+    *digit_map.get_mut(&('1', '0')).unwrap() = vec![Move::Right, Move::Down];
+    *digit_map.get_mut(&('1', 'A')).unwrap() = vec![Move::Right, Move::Right, Move::Down];
+
+    *digit_map.get_mut(&('0', '7')).unwrap() = vec![Move::Up, Move::Up, Move::Up, Move::Left];
+    *digit_map.get_mut(&('A', '7')).unwrap() =
+        vec![Move::Up, Move::Up, Move::Up, Move::Left, Move::Left];
+    *digit_map.get_mut(&('0', '4')).unwrap() = vec![Move::Up, Move::Up, Move::Left];
+    *digit_map.get_mut(&('A', '4')).unwrap() = vec![Move::Up, Move::Up, Move::Left, Move::Left];
+    *digit_map.get_mut(&('0', '1')).unwrap() = vec![Move::Up, Move::Left];
+    *digit_map.get_mut(&('A', '1')).unwrap() = vec![Move::Up, Move::Left, Move::Left];
+
+    *arrow_map.get_mut(&('^', '<')).unwrap() = vec![Move::Down, Move::Left];
+    *arrow_map.get_mut(&('A', '<')).unwrap() = vec![Move::Down, Move::Left, Move::Left];
+
+    *arrow_map.get_mut(&('<', '^')).unwrap() = vec![Move::Right, Move::Up];
+    *arrow_map.get_mut(&('<', 'A')).unwrap() = vec![Move::Right, Move::Right, Move::Up];
 
     let codes = codes
         .into_iter()
@@ -206,43 +163,34 @@ fn paths(
     paths
 }
 
-fn map_pairs(buttons: &HashMap<char, (u8, u8)>) -> HashMap<(char, char), Vec<Vec<Move>>> {
+fn map_pairs(buttons: &HashMap<char, (u8, u8)>) -> HashMap<(char, char), Vec<Move>> {
     let mut pairs = HashMap::new();
     for (b1, (r1, c1)) in buttons {
         for (b2, (r2, c2)) in buttons {
             if b1 == b2 {
-                pairs.insert((*b1, *b2), vec![vec![]]);
+                pairs.insert((*b1, *b2), vec![]);
                 continue;
             }
 
-            let mut cols = vec![];
-            if c1 < c2 {
-                (0..(c2 - c1)).for_each(|_| cols.push(Move::Right));
-            } else if c2 < c1 {
-                (0..(c1 - c2)).for_each(|_| cols.push(Move::Left));
+            let mut pair = vec![];
+            if c2 < c1 {
+                (0..(c1 - c2)).for_each(|_| pair.push(Move::Left));
             }
-            let mut rows = vec![];
             if r1 < r2 {
-                (0..(r2 - r1)).for_each(|_| rows.push(Move::Down));
+                (0..(r2 - r1)).for_each(|_| pair.push(Move::Down));
             } else if r2 < r1 {
-                (0..(r1 - r2)).for_each(|_| rows.push(Move::Up));
+                (0..(r1 - r2)).for_each(|_| pair.push(Move::Up));
             }
-
-            if rows.is_empty() {
-                pairs.insert((*b1, *b2), vec![cols]);
-            } else if cols.is_empty() {
-                pairs.insert((*b1, *b2), vec![rows]);
-            } else {
-                let h = rows.iter().chain(cols.iter()).cloned().collect();
-                let v = cols.iter().chain(rows.iter()).cloned().collect();
-                pairs.insert((*b1, *b2), vec![h, v]);
+            if c1 < c2 {
+                (0..(c2 - c1)).for_each(|_| pair.push(Move::Right));
             }
+            pairs.insert((*b1, *b2), pair);
         }
     }
     pairs
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy)]
 enum Move {
     Press = 0,
     Left = 1,
