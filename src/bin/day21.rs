@@ -57,29 +57,25 @@ pub fn main() {
     // Pairs are mapped with moves grouped and sorted left to right on the key pad, the pairs where
     // this is not possible due to the blank space need to be modified manually to go the 'wrong'
     // way.
-    *digit_map.get_mut(&('7', '0')).unwrap() =
-        vec![Move::Right, Move::Down, Move::Down, Move::Down];
-    *digit_map.get_mut(&('7', 'A')).unwrap() =
-        vec![Move::Right, Move::Right, Move::Down, Move::Down, Move::Down];
-    *digit_map.get_mut(&('4', '0')).unwrap() = vec![Move::Right, Move::Down, Move::Down];
-    *digit_map.get_mut(&('4', 'A')).unwrap() =
-        vec![Move::Right, Move::Right, Move::Down, Move::Down];
-    *digit_map.get_mut(&('1', '0')).unwrap() = vec![Move::Right, Move::Down];
-    *digit_map.get_mut(&('1', 'A')).unwrap() = vec![Move::Right, Move::Right, Move::Down];
+    *digit_map.get_mut(&('7', '0')).unwrap() = ">vvv".to_string();
+    *digit_map.get_mut(&('7', 'A')).unwrap() = ">>vvv".to_string();
+    *digit_map.get_mut(&('4', '0')).unwrap() = ">vv".to_string();
+    *digit_map.get_mut(&('4', 'A')).unwrap() = ">>vv".to_string();
+    *digit_map.get_mut(&('1', '0')).unwrap() = ">v".to_string();
+    *digit_map.get_mut(&('1', 'A')).unwrap() = ">>v".to_string();
 
-    *digit_map.get_mut(&('0', '7')).unwrap() = vec![Move::Up, Move::Up, Move::Up, Move::Left];
-    *digit_map.get_mut(&('A', '7')).unwrap() =
-        vec![Move::Up, Move::Up, Move::Up, Move::Left, Move::Left];
-    *digit_map.get_mut(&('0', '4')).unwrap() = vec![Move::Up, Move::Up, Move::Left];
-    *digit_map.get_mut(&('A', '4')).unwrap() = vec![Move::Up, Move::Up, Move::Left, Move::Left];
-    *digit_map.get_mut(&('0', '1')).unwrap() = vec![Move::Up, Move::Left];
-    *digit_map.get_mut(&('A', '1')).unwrap() = vec![Move::Up, Move::Left, Move::Left];
+    *digit_map.get_mut(&('0', '7')).unwrap() = "^^^<".to_string();
+    *digit_map.get_mut(&('A', '7')).unwrap() = "^^^<<".to_string();
+    *digit_map.get_mut(&('0', '4')).unwrap() = "^^<".to_string();
+    *digit_map.get_mut(&('A', '4')).unwrap() = "^^<<".to_string();
+    *digit_map.get_mut(&('0', '1')).unwrap() = "^<".to_string();
+    *digit_map.get_mut(&('A', '1')).unwrap() = "^<<".to_string();
 
-    *arrow_map.get_mut(&('^', '<')).unwrap() = vec![Move::Down, Move::Left];
-    *arrow_map.get_mut(&('A', '<')).unwrap() = vec![Move::Down, Move::Left, Move::Left];
+    *arrow_map.get_mut(&('^', '<')).unwrap() = "v<".to_string();
+    *arrow_map.get_mut(&('A', '<')).unwrap() = "v<<".to_string();
 
-    *arrow_map.get_mut(&('<', '^')).unwrap() = vec![Move::Right, Move::Up];
-    *arrow_map.get_mut(&('<', 'A')).unwrap() = vec![Move::Right, Move::Right, Move::Up];
+    *arrow_map.get_mut(&('<', '^')).unwrap() = ">^".to_string();
+    *arrow_map.get_mut(&('<', 'A')).unwrap() = ">>^".to_string();
 
     let codes = codes
         .into_iter()
@@ -114,7 +110,7 @@ pub fn main() {
 
 fn chained(
     code: &str,
-    pairs: &HashMap<(char, char), Vec<Move>>,
+    pairs: &HashMap<(char, char), String>,
     pair_cache: &mut HashMap<String, Vec<String>>,
     len_cache: &mut HashMap<String, HashMap<usize, usize>>,
     steps: usize,
@@ -136,72 +132,47 @@ fn chained(
 
 fn paths(
     code: &str,
-    pairs: &HashMap<(char, char), Vec<Move>>,
+    pairs: &HashMap<(char, char), String>,
     cache: &mut HashMap<String, Vec<String>>,
 ) -> Vec<String> {
     if let Some(p) = cache.get(code) {
         return p.clone();
     }
     let mut prev = 'A';
-    let mut paths: Vec<Vec<Move>> = vec![];
+    let mut paths: Vec<String> = vec![];
     for b in code.chars() {
         let seq = &pairs[&(prev, b)];
         paths.push(seq.clone());
         prev = b;
     }
-    paths.iter_mut().for_each(|p| p.push(Move::Press));
-    let paths: Vec<String> = paths
-        .into_iter()
-        .map(|p| p.into_iter().map(|m| m.to_char()).collect())
-        .collect();
+    paths.iter_mut().for_each(|p| p.push('A'));
     cache.insert(code.into(), paths.clone());
     paths
 }
 
-fn map_pairs(buttons: &HashMap<char, (u8, u8)>) -> HashMap<(char, char), Vec<Move>> {
+fn map_pairs(buttons: &HashMap<char, (u8, u8)>) -> HashMap<(char, char), String> {
     let mut pairs = HashMap::new();
     for (b1, (r1, c1)) in buttons {
         for (b2, (r2, c2)) in buttons {
             if b1 == b2 {
-                pairs.insert((*b1, *b2), vec![]);
+                pairs.insert((*b1, *b2), String::new());
                 continue;
             }
 
-            let mut pair = vec![];
+            let mut pair = String::new();
             if c2 < c1 {
-                (0..(c1 - c2)).for_each(|_| pair.push(Move::Left));
+                (0..(c1 - c2)).for_each(|_| pair.push('<'));
             }
             if r1 < r2 {
-                (0..(r2 - r1)).for_each(|_| pair.push(Move::Down));
+                (0..(r2 - r1)).for_each(|_| pair.push('v'));
             } else if r2 < r1 {
-                (0..(r1 - r2)).for_each(|_| pair.push(Move::Up));
+                (0..(r1 - r2)).for_each(|_| pair.push('^'));
             }
             if c1 < c2 {
-                (0..(c2 - c1)).for_each(|_| pair.push(Move::Right));
+                (0..(c2 - c1)).for_each(|_| pair.push('>'));
             }
             pairs.insert((*b1, *b2), pair);
         }
     }
     pairs
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Move {
-    Press = 0,
-    Left = 1,
-    Down = 2,
-    Up = 3,
-    Right = 4,
-}
-
-impl Move {
-    fn to_char(self) -> char {
-        match self {
-            Move::Right => '>',
-            Move::Up => '^',
-            Move::Down => 'v',
-            Move::Left => '<',
-            Move::Press => 'A',
-        }
-    }
 }
