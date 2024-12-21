@@ -82,7 +82,7 @@ pub fn main() {
         .map(|(k, v)| (k, paths(&v, &digit_map, &mut HashMap::new())))
         .collect::<Vec<_>>();
 
-    let mut pair_cache: HashMap<String, Vec<String>> = Default::default();
+    let mut pair_cache = HashMap::new();
     let mut len_cache = HashMap::new();
 
     let mut complex = 0;
