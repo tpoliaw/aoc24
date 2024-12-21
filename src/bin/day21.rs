@@ -22,12 +22,7 @@ pub fn main() {
     let src = input(21).string();
     let codes = src
         .lines()
-        .map(|ln| {
-            (
-                ln[..ln.len() - 1].parse::<usize>().unwrap(),
-                ln.chars().collect::<Vec<_>>(),
-            )
-        })
+        .map(|ln| (ln[..ln.len() - 1].parse::<usize>().unwrap(), ln))
         .collect::<Vec<_>>();
 
     let digits = [
@@ -91,7 +86,7 @@ pub fn main() {
         .map(|(k, v)| (k, paths(&v, &digit_map, &mut HashMap::new())))
         .collect::<Vec<_>>();
 
-    let mut pair_cache: HashMap<Vec<char>, Vec<Vec<char>>> = Default::default();
+    let mut pair_cache: HashMap<String, Vec<String>> = Default::default();
     let mut len_cache = HashMap::new();
 
     let mut complex = 0;
@@ -118,16 +113,16 @@ pub fn main() {
 }
 
 fn chained(
-    code: &[char],
+    code: &str,
     pairs: &HashMap<(char, char), Vec<Move>>,
-    pair_cache: &mut HashMap<Vec<char>, Vec<Vec<char>>>,
-    len_cache: &mut HashMap<(Vec<char>, usize), usize>,
+    pair_cache: &mut HashMap<String, Vec<String>>,
+    len_cache: &mut HashMap<String, HashMap<usize, usize>>,
     steps: usize,
 ) -> usize {
     if steps == 0 {
         return code.len();
     }
-    if let Some(l) = len_cache.get(&(code.to_vec(), steps)) {
+    if let Some(l) = len_cache.get(code).and_then(|l| l.get(&steps)) {
         return *l;
     }
     let segments = paths(code, pairs, pair_cache);
@@ -135,27 +130,27 @@ fn chained(
         .iter()
         .map(|s| chained(&s, pairs, pair_cache, len_cache, steps - 1))
         .sum();
-    len_cache.insert((code.to_vec(), steps), len);
+    len_cache.entry(code.into()).or_default().insert(steps, len);
     len
 }
 
 fn paths(
-    code: &[char],
+    code: &str,
     pairs: &HashMap<(char, char), Vec<Move>>,
-    cache: &mut HashMap<Vec<char>, Vec<Vec<char>>>,
-) -> Vec<Vec<char>> {
+    cache: &mut HashMap<String, Vec<String>>,
+) -> Vec<String> {
     if let Some(p) = cache.get(code) {
         return p.clone();
     }
     let mut prev = 'A';
     let mut paths: Vec<Vec<Move>> = vec![];
-    for b in code {
-        let seq = &pairs[&(prev, *b)];
+    for b in code.chars() {
+        let seq = &pairs[&(prev, b)];
         paths.push(seq.clone());
-        prev = *b;
+        prev = b;
     }
     paths.iter_mut().for_each(|p| p.push(Move::Press));
-    let paths: Vec<Vec<char>> = paths
+    let paths: Vec<String> = paths
         .into_iter()
         .map(|p| p.into_iter().map(|m| m.to_char()).collect())
         .collect();
@@ -207,16 +202,6 @@ impl Move {
             Move::Down => 'v',
             Move::Left => '<',
             Move::Press => 'A',
-        }
-    }
-    fn from_char(c: char) -> Self {
-        match c {
-            '>' => Self::Right,
-            '<' => Self::Left,
-            'v' => Self::Down,
-            '^' => Self::Up,
-            'A' => Self::Press,
-            _ => panic!(),
         }
     }
 }
