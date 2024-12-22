@@ -21,19 +21,21 @@ fn main() {
     let seqs = secrets
         .iter()
         .map(|sn| sn.prices(2000))
-        .map(|seq| first_appearances(seq))
+        .map(first_appearances)
         .collect::<Vec<_>>();
 
-    let p2 = Seq::all()
-        .map(|seq| {
-            seqs.iter()
-                .filter_map(|apps| apps.get(&seq))
-                .map(|i| *i as usize)
-                .sum::<usize>()
-        })
-        .max()
-        .unwrap();
+    let totals = seqs
+        .into_iter()
+        .fold(HashMap::new(), |base, other| merge(base, other));
+    let p2 = totals.values().max().unwrap();
     println!("Part 2: {p2}");
+}
+
+fn merge(mut base: HashMap<Seq, usize>, other: HashMap<Seq, i8>) -> HashMap<Seq, usize> {
+    for (k, v) in other.into_iter() {
+        *base.entry(k).or_default() += v as usize;
+    }
+    base
 }
 
 fn first_appearances(prices: Vec<(i8, i8)>) -> HashMap<Seq, i8> {
@@ -65,8 +67,7 @@ impl SecNum {
     fn next(self) -> Self {
         let p1 = self.mix(self.0 * 64).prune();
         let p2 = p1.mix(p1.0 >> 5).prune();
-        let p3 = p2.mix(p2.0 * 2048).prune();
-        p3
+        p2.mix(p2.0 * 2048).prune()
     }
     fn prices(mut self, len: usize) -> Vec<(i8, i8)> {
         let mut prices = Vec::with_capacity(len);
@@ -85,15 +86,5 @@ impl SecNum {
 impl Seq {
     fn push(self, next: i8) -> Self {
         Self(self.1, self.2, self.3, next)
-    }
-
-    fn all() -> impl Iterator<Item = Self> {
-        (-9..=9).into_iter().flat_map(|p1| {
-            (-9..=9).into_iter().flat_map(move |p2| {
-                (-9..=9)
-                    .into_iter()
-                    .flat_map(move |p3| (-9..=9).into_iter().map(move |p4| Seq(p1, p2, p3, p4)))
-            })
-        })
     }
 }
